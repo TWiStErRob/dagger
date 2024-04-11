@@ -168,6 +168,8 @@ public enum FrameworkType {
     switch (requestKind) {
       case PROVIDER:
         return Optional.of(FrameworkType.PROVIDER);
+      case PRODUCER:
+        return Optional.of(FrameworkType.PRODUCER_NODE);
       default:
         return Optional.empty();
     }

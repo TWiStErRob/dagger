@@ -16,6 +16,7 @@
 
 package dagger.internal.codegen;
 
+
 import androidx.room.compiler.processing.util.Source;
 import com.google.common.collect.ImmutableMap;
 import dagger.testing.compile.CompilerTests;
@@ -413,6 +414,70 @@ public class ProductionComponentProcessorTest {
             subject -> {
               subject.hasErrorCount(0);
               subject.generatedSource(goldenFileRule.goldenSource("test/DaggerParent"));
+            });
+  }
+
+  @Test
+  public void requestProducerNodeWithProvider_failsWithNotSupportedError() {
+    Source moduleFile =
+        CompilerTests.javaSource(
+            "test.ExecutorModule",
+            "package test;",
+            "",
+            "import com.google.common.util.concurrent.MoreExecutors;",
+            "import dagger.Module;",
+            "import dagger.Provides;",
+            "import dagger.producers.Production;",
+            "import java.util.concurrent.Executor;",
+            "",
+            "@Module",
+            "final class ExecutorModule {",
+            "  @Provides @Production Executor executor() {",
+            "    return MoreExecutors.directExecutor();",
+            "  }",
+            "}");
+    Source producerModuleFile =
+        CompilerTests.javaSource(
+            "test.SimpleModule",
+            "package test;",
+            "",
+            "import dagger.producers.ProducerModule;",
+            "import dagger.producers.Produces;",
+            "import javax.inject.Provider;",
+            "import java.util.concurrent.Executor;",
+            "import dagger.producers.Production;",
+            "",
+            "@ProducerModule",
+            "final class SimpleModule {",
+            "  @Produces String str(Provider<Integer> num) {",
+            "    return \"\";",
+            "  }",
+            "  @Produces Integer num() { return 1; }",
+            "}");
+    Source componentFile =
+        CompilerTests.javaSource(
+            "test.SimpleComponent",
+            "package test;",
+            "",
+            "import com.google.common.util.concurrent.ListenableFuture;",
+            "import dagger.producers.ProductionComponent;",
+            "",
+            "@ProductionComponent(modules = {ExecutorModule.class, SimpleModule.class})",
+            "interface SimpleComponent {",
+            "  ListenableFuture<String> str();",
+            "",
+            "  @ProductionComponent.Builder",
+            "  interface Builder {",
+            "    SimpleComponent build();",
+            "  }",
+            "}");
+
+    CompilerTests.daggerCompiler(moduleFile, producerModuleFile, componentFile)
+        .withProcessingOptions(compilerMode.processorOptions())
+        .compile(
+            subject -> {
+              subject.hasErrorCount(1);
+              subject.hasErrorContaining("request a producer binding with Provider");
             });
   }
 }

@@ -27,6 +27,7 @@ import dagger.internal.codegen.model.BindingGraph;
 import dagger.internal.codegen.model.BindingGraph.DependencyEdge;
 import dagger.internal.codegen.model.BindingGraph.Node;
 import dagger.internal.codegen.model.DiagnosticReporter;
+import dagger.internal.codegen.model.RequestKind;
 import dagger.internal.codegen.validation.ValidationBindingGraphPlugin;
 import java.util.stream.Stream;
 import javax.inject.Inject;
@@ -48,7 +49,7 @@ final class ProvisionDependencyOnProducerBindingValidator extends ValidationBind
 
   @Override
   public void visitGraph(BindingGraph bindingGraph, DiagnosticReporter diagnosticReporter) {
-    provisionDependenciesOnProductionBindings(bindingGraph)
+    provisionDependenciesOnProductionBindings(bindingGraph, diagnosticReporter)
         .forEach(
             provisionDependent ->
                 diagnosticReporter.reportDependency(
@@ -60,11 +61,18 @@ final class ProvisionDependencyOnProducerBindingValidator extends ValidationBind
   }
 
   private Stream<DependencyEdge> provisionDependenciesOnProductionBindings(
-      BindingGraph bindingGraph) {
+      BindingGraph bindingGraph, DiagnosticReporter diagnosticReporter) {
     return bindingGraph.bindings().stream()
         .filter(binding -> binding.isProduction())
         .flatMap(binding -> incomingDependencies(binding, bindingGraph))
-        .filter(edge -> !dependencyCanUseProduction(edge, bindingGraph));
+        .filter(
+            edge -> {
+              if (edge.dependencyRequest().kind().equals(RequestKind.PROVIDER)) {
+                diagnosticReporter.reportDependency(
+                    ERROR, edge, "Cannot request a producer binding with Provider");
+              }
+              return !dependencyCanUseProduction(edge, bindingGraph);
+            });
   }
 
   /** Returns the dependencies on {@code binding}. */

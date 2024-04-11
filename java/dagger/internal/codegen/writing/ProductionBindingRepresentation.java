@@ -26,6 +26,7 @@ import dagger.assisted.AssistedInject;
 import dagger.internal.codegen.binding.BindingRequest;
 import dagger.internal.codegen.binding.FrameworkType;
 import dagger.internal.codegen.binding.ProductionBinding;
+import dagger.internal.codegen.model.RequestKind;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -38,7 +39,7 @@ final class ProductionBindingRepresentation implements BindingRepresentation {
   private final ProductionBinding binding;
   private final DerivedFromFrameworkInstanceRequestRepresentation.Factory
       derivedFromFrameworkInstanceRequestRepresentationFactory;
-  private final RequestRepresentation frameworkInstanceRequestRepresentation;
+  private final RequestRepresentation producerNodeInstanceRequestRepresentation;
   private final Map<BindingRequest, RequestRepresentation> requestRepresentations = new HashMap<>();
 
   @AssistedInject
@@ -66,7 +67,7 @@ final class ProductionBindingRepresentation implements BindingRepresentation {
                     ? bindingRepresentations.scope(
                         binding, unscopedFrameworkInstanceCreationExpressionFactory.create(binding))
                     : unscopedFrameworkInstanceCreationExpressionFactory.create(binding));
-    this.frameworkInstanceRequestRepresentation =
+    this.producerNodeInstanceRequestRepresentation =
         producerNodeInstanceRequestRepresentationFactory.create(binding, frameworkInstanceSupplier);
   }
 
@@ -77,11 +78,11 @@ final class ProductionBindingRepresentation implements BindingRepresentation {
   }
 
   private RequestRepresentation getRequestRepresentationUncached(BindingRequest request) {
-    return request.frameworkType().isPresent()
-        ? frameworkInstanceRequestRepresentation
+    return request.requestKind().equals(RequestKind.PRODUCER)
+        ? producerNodeInstanceRequestRepresentation
         : derivedFromFrameworkInstanceRequestRepresentationFactory.create(
             binding,
-            frameworkInstanceRequestRepresentation,
+            producerNodeInstanceRequestRepresentation,
             request.requestKind(),
             FrameworkType.PRODUCER_NODE);
   }
